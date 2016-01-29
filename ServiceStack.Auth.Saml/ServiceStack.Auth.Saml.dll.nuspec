@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>.\ServiceStack.Auth.Saml.dll</id>
+    <version>0.1.0</version>
+    <authors>mikepugh</authors>
+    <owners>AMERICAN SYSTEMS Corporation</owners>
+    <projectUrl>https://github.com/americansystems/servicestack-auth-saml</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>ServiceStack Saml Auth Providers</description>
+    <releaseNotes>Initial release.</releaseNotes>
+    <copyright>Copyright 2016</copyright>
+    <tags>servicestack saml auth</tags>
+    <dependencies>
+      <dependency id="ServiceStack" version="4.0.52" />
+    </dependencies>
+  </metadata>
+</package>
