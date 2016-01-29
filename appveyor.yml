@@ -1,0 +1,42 @@
+-
+  branches:
+    only:
+      - master
+  configuration: Release  
+  version: 0.1..{build}
+  os: Windows Server 2012 R2
+  init:
+  - git config --global core.autocrlf input  
+  before_build:
+    - cmd: nuget restore
+  test: off
+  assembly_info:
+    patch: true
+    file: '**\AssemblyInfo.*'
+    assembly_version: '{version}'
+    assembly_file_version: '{version}'
+    assembly_informational_version: '{version}'
+  nuget:
+    account_feed: true
+    project_feed: true
+  build:
+    project: ServiceStack.Auth.Saml.sln
+    verbosity: minimal  
+    publish_nuget: true             
+    publish_nuget_symbols: true     
+    include_nuget_references: true  
+-
+  os: Windows Server 2012 R2
+  init:
+  - git config --global core.autocrlf input 
+  before_build:
+    - cmd: nuget restore
+  configuration: Debug
+  test: off
+  version: 0.1.0.{build}
+  nuget:
+    account_feed: true
+    project_feed: true
+  build:
+    project: ServiceStack.Auth.Saml.sln    
+    verbosity: minimal    
