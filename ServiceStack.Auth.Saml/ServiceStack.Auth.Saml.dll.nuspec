@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>.\ServiceStack.Auth.Saml.dll</id>
+    <id>ServiceStack.Auth.Saml</id>
     <version>0.1.0</version>
     <authors>mikepugh</authors>
     <owners>AMERICAN SYSTEMS Corporation</owners>
