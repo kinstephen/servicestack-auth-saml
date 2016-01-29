@@ -105,50 +105,44 @@ namespace ServiceStack.Auth.Saml
         protected override void LoadUserAuthInfo(AuthUserSession userSession, IAuthTokens tokens, Dictionary<string, string> authInfo)
         {
             // move authInfo data into tokens, try to keep naming conventions used by oath providers
-            if (authInfo.ContainsKey("user_id"))
-                tokens.UserId = authInfo.GetValueOrDefault("user_id");
-
-            if (authInfo.ContainsKey("name"))
-                tokens.DisplayName = authInfo.GetValueOrDefault("name");
-
-            if (authInfo.ContainsKey("FullName"))
+            try
             {
-                tokens.FullName = authInfo.GetValueOrDefault("FullName");
-                if (tokens.DisplayName.IsNullOrEmpty())
-                    tokens.DisplayName = tokens.FullName;
+                tokens.UserId = authInfo["user_id"];
+                tokens.UserName = authInfo["username"];
+                tokens.DisplayName = authInfo["name"];
+                tokens.FirstName = authInfo["first_name"];
+                tokens.LastName = authInfo["last_name"];
+                tokens.Email = authInfo["email"];                                
+                userSession.UserAuthName = tokens.UserId;
+                userSession.UserAuthId = authInfo.GetValueOrDefault("secondary_id");
+
+                string profileUrl;
+                if (authInfo.TryGetValue("picture", out profileUrl))
+                    tokens.Items[AuthMetadataProvider.ProfileUrlKey] = profileUrl;
+
+                this.LoadUserOAuthProvider(userSession, tokens);                
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Could not retrieve Profile info for '{0}'".Fmt(tokens.DisplayName), ex);
+            }
+            
+        }
+
+        protected void LoadUserOAuthProvider(IAuthSession authSession, IAuthTokens tokens)
+        {
+            var userSession = authSession as AuthUserSession;
+            if (userSession == null)
+            {
+                return;
             }
 
-            if (authInfo.ContainsKey("Email"))
-                tokens.Email = authInfo.GetValueOrDefault("Email");
-
-            if (authInfo.ContainsKey("BirthDate"))
-                tokens.BirthDate = authInfo.GetValueOrDefault("BirthDate").FromJsv<DateTime?>();
-
-            if (authInfo.ContainsKey("BirthDateRaw"))
-                tokens.BirthDateRaw = authInfo.GetValueOrDefault("BirthDateRaw");
-
-            if (authInfo.ContainsKey("Country"))
-                tokens.Country = authInfo.GetValueOrDefault("Country");
-
-            if (authInfo.ContainsKey("Culture"))
-                tokens.Culture = authInfo.GetValueOrDefault("Culture");
-
-            if (authInfo.ContainsKey("Gender"))
-                tokens.Gender = authInfo.GetValueOrDefault("Gender");
-
-            if (authInfo.ContainsKey("MailAddress"))
-                tokens.MailAddress = authInfo.GetValueOrDefault("MailAddress");
-
-            if (authInfo.ContainsKey("Nickname"))
-                tokens.Nickname = authInfo.GetValueOrDefault("Nickname");
-
-            if (authInfo.ContainsKey("PostalCode"))
-                tokens.PostalCode = authInfo.GetValueOrDefault("PostalCode");
-
-            if (authInfo.ContainsKey("TimeZone"))
-                tokens.TimeZone = authInfo.GetValueOrDefault("TimeZone");
-
-            tokens.Items = authInfo;
+            userSession.UserName = tokens.UserName ?? userSession.UserName;
+            userSession.DisplayName = tokens.DisplayName ?? userSession.DisplayName;
+            userSession.FirstName = tokens.FirstName ?? userSession.FirstName;
+            userSession.LastName = tokens.LastName ?? userSession.LastName;
+            userSession.PrimaryEmail = tokens.Email ?? userSession.PrimaryEmail ?? userSession.Email;
+            userSession.Email = tokens.Email ?? userSession.PrimaryEmail ?? userSession.Email;
         }
 
         public override object Logout(IServiceBase service, Authenticate request)
