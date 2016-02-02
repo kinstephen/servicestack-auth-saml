@@ -1,8 +1,7 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>ServiceStack.Auth.Saml</id>
-    <version>0.1.0</version>
+    <id>ServiceStack.Auth.Saml</id>    
     <authors>mikepugh</authors>
     <owners>AMERICAN SYSTEMS Corporation</owners>
     <projectUrl>https://github.com/americansystems/servicestack-auth-saml</projectUrl>
