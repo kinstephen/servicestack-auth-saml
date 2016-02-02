@@ -20,6 +20,8 @@ namespace ServiceStack.Auth.Saml
         public string Issuer { get; set; }               
         public String SamlResponseFormKey { get; set; }
         public String LogoutUrl { get; set; }
+        // Set the IdpInitiatedRedirect to the URL/endpoint that the user should be sent to after a successful IdP initiated authentication, typically the base of the web app
+        public String IdpInitiatedRedirect { get; set; }
         public X509Certificate2 SamlSigningCert { get; set; }
 
         public SamlAuthProvider(IAppSettings appSettings, string authRealm, string provider, X509Certificate2 signingCert)            
@@ -31,6 +33,7 @@ namespace ServiceStack.Auth.Saml
             if(appSettings != null)
             {
                 this.CallbackUrl = appSettings.GetString("saml.{0}.CallbackUrl".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.CallbackUrl"));
+                this.IdpInitiatedRedirect = appSettings.GetString("saml.{0}.IdpInitiatedRedirect".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.IdpInitiatedRedirect"));
                 this.RedirectUrl = appSettings.GetString("saml.{0}.RedirectUrl".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.RedirectUrl"));
                 this.LogoutUrl = appSettings.GetString("saml.{0}.LogoutUrl".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.LogoutUrl"));
                 this.Issuer = appSettings.GetString("saml.{0}.Issuer".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.Issuer"));
@@ -59,9 +62,14 @@ namespace ServiceStack.Auth.Saml
                 this.CallbackUrl = authService.Request.AbsoluteUri;
                 Logger.Debug("CallbackUrl was null, setting to: {0}".Fmt(this.CallbackUrl));
             }
-                
 
-            session.ReferrerUrl = GetReferrerUrl(authService, session, request);
+            if (session.ReferrerUrl.IsNullOrEmpty() && authService.Request != null && authService.Request.Verb == "POST")
+            {
+                session.ReferrerUrl = this.IdpInitiatedRedirect;
+            }
+            else {
+                session.ReferrerUrl = GetReferrerUrl(authService, session, request);
+            }
             Logger.Debug("Session ReferrerUrl Set to: {0}".Fmt(session.ReferrerUrl));
 
             var tokens = session.ProviderOAuthAccess.FirstOrDefault(x => x.Provider == this.Provider);
