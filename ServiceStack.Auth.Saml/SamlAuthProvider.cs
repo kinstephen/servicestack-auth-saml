@@ -45,7 +45,7 @@ namespace ServiceStack.Auth.Saml
                     this.Issuer,
                     this.AuthorizeUrl,
                     this.SamlResponseFormKey
-                });
+                }.ToJson());
             }
 
             
@@ -71,7 +71,7 @@ namespace ServiceStack.Auth.Saml
                 session.ProviderOAuthAccess.Add(tokens = new AuthTokens { Provider = this.Provider });                
             }
             Logger.Debug("Tokens contains");
-            Logger.Debug(tokens);
+            Logger.Debug(tokens.ToJson());
             Logger.Debug("SamlAuthProvider::Init:RETURN");
             return tokens;
         }
@@ -90,10 +90,10 @@ namespace ServiceStack.Auth.Saml
                     Logger.Debug("SAMLResponse Valid");
                     var attributes = this.ParseSamlResponseAttributes(xDoc);
                     Logger.Debug("Obtained SAMLResponse Attributes");
-                    Logger.Debug(attributes);
+                    Logger.Debug(attributes.ToJson());
                     var authInfo = CreateAuthInfo(attributes);
                     Logger.Debug("Parsed SAMLResponse attributes");
-                    Logger.Debug(authInfo);
+                    Logger.Debug(authInfo.ToJson());
                     session.IsAuthenticated = true;
                     Logger.Debug("Session.IsAuthenticated = {0}".Fmt(session.IsAuthenticated));
                     Logger.Debug("SamlAuthProvider::Authenticate:RETURN OnAuthResponse");
