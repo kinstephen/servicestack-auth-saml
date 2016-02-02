@@ -7,12 +7,15 @@ using ServiceStack.Configuration;
 using System.Linq;
 using System.Xml;
 using System.IO;
+using ServiceStack.Logging;
 
 namespace ServiceStack.Auth.Saml
 {
     
     public abstract class SamlAuthProvider : AuthProvider
     {
+        private ILog Logger = LogManager.GetLogger(typeof(SamlAuthProvider));
+
         public string AuthorizeUrl { get; set; }
         public string Issuer { get; set; }               
         public String SamlResponseFormKey { get; set; }
@@ -21,6 +24,7 @@ namespace ServiceStack.Auth.Saml
 
         public SamlAuthProvider(IAppSettings appSettings, string authRealm, string provider, X509Certificate2 signingCert)            
         {
+            Logger.Info("SamlAuthProvider Starting up for Realm: {0}, Provider: {1}".Fmt(authRealm, provider));
             this.AuthRealm = appSettings != null ? appSettings.Get("SamlRealm", authRealm) : authRealm;
             this.Provider = provider;
             this.SamlSigningCert = signingCert;
@@ -31,7 +35,17 @@ namespace ServiceStack.Auth.Saml
                 this.LogoutUrl = appSettings.GetString("saml.{0}.LogoutUrl".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.LogoutUrl"));
                 this.Issuer = appSettings.GetString("saml.{0}.Issuer".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.Issuer"));
                 this.AuthorizeUrl = appSettings.GetString("saml.{0}.AuthorizeUrl".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.AuthorizeUrl"));
-                this.SamlResponseFormKey = appSettings.GetString("saml.{0}.ResponseFormKey".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.ResponseFormKey"));                
+                this.SamlResponseFormKey = appSettings.GetString("saml.{0}.ResponseFormKey".Fmt(provider)) ?? this.FallbackConfig(appSettings.GetString("saml.ResponseFormKey"));
+                Logger.Info("Obtained the following settings from appSettings");
+                Logger.Info(new
+                {
+                    this.CallbackUrl,
+                    this.RedirectUrl,
+                    this.LogoutUrl,
+                    this.Issuer,
+                    this.AuthorizeUrl,
+                    this.SamlResponseFormKey
+                });
             }
 
             
@@ -39,64 +53,91 @@ namespace ServiceStack.Auth.Saml
 
         protected IAuthTokens Init(IServiceBase authService, ref IAuthSession session, Authenticate request)
         {
+            Logger.Debug("SamlAuthProvider::Init:ENTER");
             if (this.CallbackUrl.IsNullOrEmpty())
+            {
                 this.CallbackUrl = authService.Request.AbsoluteUri;
+                Logger.Debug("CallbackUrl was null, setting to: {0}".Fmt(this.CallbackUrl));
+            }
+                
 
             session.ReferrerUrl = GetReferrerUrl(authService, session, request);
+            Logger.Debug("Session ReferrerUrl Set to: {0}".Fmt(session.ReferrerUrl));
 
             var tokens = session.ProviderOAuthAccess.FirstOrDefault(x => x.Provider == this.Provider);
             if (tokens == null)
             {
+                Logger.Debug("Tokens were null, initializing");
                 session.ProviderOAuthAccess.Add(tokens = new AuthTokens { Provider = this.Provider });                
             }
+            Logger.Debug("Tokens contains");
+            Logger.Debug(tokens);
+            Logger.Debug("SamlAuthProvider::Init:RETURN");
             return tokens;
         }
 
         public override object Authenticate(IServiceBase authService, IAuthSession session, Authenticate request)
         {
+            Logger.Debug("SamlAuthProvider::Authenticate:ENTER");
             var tokens = this.Init(authService, ref session, request);
 
             if(authService.Request.Verb == "POST")
             {
+                Logger.Debug("SamlAuthProvider received POST response");
                 XmlDocument xDoc = this.ParseSamlResponse(authService.Request.FormData[this.SamlResponseFormKey]);
                 if(this.IsResponseValid(xDoc))
                 {
+                    Logger.Debug("SAMLResponse Valid");
                     var attributes = this.ParseSamlResponseAttributes(xDoc);
+                    Logger.Debug("Obtained SAMLResponse Attributes");
+                    Logger.Debug(attributes);
                     var authInfo = CreateAuthInfo(attributes);
+                    Logger.Debug("Parsed SAMLResponse attributes");
+                    Logger.Debug(authInfo);
                     session.IsAuthenticated = true;
-
+                    Logger.Debug("Session.IsAuthenticated = {0}".Fmt(session.IsAuthenticated));
+                    Logger.Debug("SamlAuthProvider::Authenticate:RETURN OnAuthResponse");
                     return OnAuthenticated(authService, session, tokens, authInfo) ??
                         authService.Redirect(SuccessRedirectUrlFilter(this, session.ReferrerUrl));
 
                 } else
                 {
+                    Logger.Debug("SAMLResponse Invalid");
+                    Logger.Debug("SamlAuthProvider::Authenticate:RETURN FailedRedirect");
                     return authService.Redirect(FailedRedirectUrlFilter(this, session.ReferrerUrl));
                 }
             } else
             {
                 var redirectUrl = "{0}?SAMLRequest={1}".Fmt(this.AuthorizeUrl, this.CreateSamlRequest(this.CallbackUrl, this.Issuer).UrlEncode());
+                Logger.Debug("SAML Authority RedirectUrl: {0}".Fmt(redirectUrl));
                 var httpResult = new HttpResult
                 {
                     StatusCode = System.Net.HttpStatusCode.TemporaryRedirect,
                     Location = redirectUrl
                 };
                 session.ReferrerUrl = authService.Request.QueryString["redirect"];
+                Logger.Debug("Session.ReferrerUrl: {0}".Fmt(session.ReferrerUrl));
                 authService.SaveSession(session, this.SessionExpiry);
+                Logger.Debug("SamlAuthProvider::Authenticate:RETURN RedirectToAuthorize");
                 return httpResult;
             }
         }
 
         public override bool IsAuthorized(IAuthSession session, IAuthTokens tokens, Authenticate request = null)
         {
+            Logger.Debug("SamlAuthProvider::IsAuthorized:ENTER");
             if (request != null)
             {
                 if (!LoginMatchesSession(session, request.UserName))
                 {
+                    Logger.Debug("SamlAuthProvider::IsAuthorized:Return False - LoginSessionMisMatch");
                     return false;
                 }
             }
 
-            return session != null && session.IsAuthenticated && tokens != null && !string.IsNullOrEmpty(tokens.UserId);
+            var retVal = session != null && session.IsAuthenticated && tokens != null && !string.IsNullOrEmpty(tokens.UserId);            
+            Logger.Debug("SamlAuthProvider::IsAuthorized:RETURN {0}".Fmt(retVal));
+            return retVal;
         }
 
         protected abstract Dictionary<string, string> CreateAuthInfo(SamlResponseAttributes attributes);
