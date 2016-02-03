@@ -245,7 +245,7 @@ namespace ServiceStack.Auth.Saml
             }
         }
 
-        protected class SamlResponseAttributes
+        public class SamlResponseAttributes
         {
             public XmlDocument OriginalResponseDoc { get; set; }
             public string NameID { get; set; }
